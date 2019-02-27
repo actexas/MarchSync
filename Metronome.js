@@ -1,33 +1,62 @@
 // @flow
-import React, {PureComponent} from 'react';
+import React, {Component} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import PropTypes from 'prop-types';
-import clockSync from 'react-native-clock-sync';
+//import clockSync from 'react-native-clock-sync';
 
-export default class Metronome extends React.PureComponent<Props> {
+export default class Metronome extends React.Component<Props> {
     static propTypes = {
         beats: PropTypes.number.isRequired,
         basis: PropTypes.number, //the basis for time, i.e. unix time that timing is synced to
     };
 
+
     constructor()
     {
         super();
         this.tick = this.tick.bind(this);
-        const clock = new clockSync({});
+        //const clock = new clockSync({});
         //this.updateInterval = this.updateInterval.bind(this);
-        this.state = {displayedBeat: 0, clock: clock}
+        this.getTime = this.getTime.bind(this);
+        this.clearTimeouts = this.clearTimeouts.bind(this);
+        this.resync = this.resync.bind(this);
+        this.state = {displayedBeat: null}
+    }
+
+    getTime()
+    {
+        const b = this.props.basis || 0;
+        return Date.now() - b;
     }
 
     componentDidMount() {
-        const millis = this.state.clock.getTime() % 1000;
-        const timeout = setTimeout(() => {
-            const interval = setInterval(this.tick, 1000);
-            this.setState({interval});
-        },1000 - millis);
-        this.setState({timeout});
+        this.resync();
+        this.tick();
     }
 
+    componentDidUpdate(oldProps) {
+        if (oldProps.basis !== this.props.basis)
+        {
+            this.resync();
+            this.tick();
+        }
+    }
+
+    resync() {
+        const millis = this.getTime() % 1000;
+        this.clearTimeouts();
+        const interval = setInterval(() => {
+            if (this.state.timeout)
+                clearTimeout(timeout);
+            const timeout = setTimeout(this.tick, 1000 - millis);
+            this.setState({timeout});
+        },500);
+        //also make an occurrence now
+        //TODO: determine removal of this
+        const timeout = setTimeout(this.tick, 1000 - millis);
+        this.setState({timeout});
+        this.setState({interval});
+    }
 
 
     render() {
@@ -47,7 +76,7 @@ export default class Metronome extends React.PureComponent<Props> {
 
             boxes[i] = <View key={i} style={style}><Text style={styles.boxText}>{i+1}</Text></View>
         }
-        return <View style={styles.countBoxRow}>{boxes}</View>;
+        return <View style={styles.countBoxRow}>{boxes}<Text>{/*`${this.getTime()}\n ${this.props.basis}`*/}</Text></View>;
     }
 
 
@@ -55,21 +84,20 @@ export default class Metronome extends React.PureComponent<Props> {
     {
         //let basis = this.props.basis || 0;
         //let now = Date.now() - basis;
-        let clock = this.props.clock;
+        /*let clock = this.props.clock;
         if (!clock)
         {
             clock = new clockSync({});
             this.setState({clock: clock })
-        }
+        }*/
 
-        const now = clock.getTime();
+        const now = this.getTime();
         this.setState({
             displayedBeat: (now / 1000 | 0 ) % this.props.beats,
         });
-        requestAnimationFrame(this.tick);
     }
 
-    componentWillUnmount()
+    clearTimeouts()
     {
         const timeout = this.state.timeout;
         if (timeout)
@@ -81,6 +109,11 @@ export default class Metronome extends React.PureComponent<Props> {
         {
             clearInterval(interval);
         }
+    }
+
+    componentWillUnmount()
+    {
+        this.clearTimeouts();
     }
 }
 

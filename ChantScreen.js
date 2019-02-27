@@ -7,7 +7,7 @@ import Metronome from "./Metronome";
 export default class ChatScreen extends PureComponent {
     static navigationOptions = ({navigation}) => {
         return {
-            headerTitle: 'March Sync v0.1',
+            headerTitle: 'March Sync v0.2',
         }
     };
 
@@ -16,12 +16,20 @@ export default class ChatScreen extends PureComponent {
         super();
         this.updateBasis = this.updateBasis.bind(this);
         this.navigateSync = this.navigateSync.bind(this);
+        this.state = {basis: 0};
     }
 
-    updateBasis()
+    async updateBasis()
     {
-        AsyncStorage.getItem("basis")
-            .then( basis => {this.setState({basis: basis});})
+        let basis = await AsyncStorage.getItem("basis");
+        let numberFormBasis;
+        if (!Number.isInteger(basis))
+            numberFormBasis = 0;
+        else
+            numberFormBasis = basis;
+        this.setState({
+            basis: Number(basis)
+        });
     }
 
     navigateSync()
@@ -32,25 +40,25 @@ export default class ChatScreen extends PureComponent {
     render() {
         return (
             <View style={styles.container}>
-                <Metronome beats={4} style={{flex:1}}/>
+                <Metronome beats={4} basis={this.state.basis} style={{flex:1}}/>
                 <ScrollView style={{flex:5}}>
                     <Text style={{fontSize: 27}}>{chantText}</Text>
                 </ScrollView>
-                {/*<TouchableNativeFeedback
+                <TouchableNativeFeedback
                     onPress={this.navigateSync}
                     background={TouchableNativeFeedback.Ripple("blue",)}>
                     <View>
                         <Text style={styles.syncButton}>Adjust Synchronization</Text>
                     </View>
-                </TouchableNativeFeedback>*/}
+                </TouchableNativeFeedback>
 
             </View>
         );
     }
 
-    componentDidMount() {
+    async componentDidMount() {
         this.willFocusSubscription = this.props.navigation.addListener("willFocus", this.updateBasis);
-        this.updateBasis();
+        await this.updateBasis();
     }
 
     componentWillUnmount() {
